@@ -30,7 +30,73 @@ public class Example {
 ```
 
 ```php
+<?php
 
+declare(strict_types=1);
+
+namespace Doctrine\ORM;
+
+use Doctrine\Common|Collections\AbstractLazyCollection;
+
+final class PersistentCollection extends AbstractLazyCollection implements Selectable
+{
+  private $snapshot = [];
+  
+  private $owner;
+  
+  
+  
+  public function removeElement($element)
+  {
+    if (! $this->initialized &&
+      $this->association !== null &&
+      $this->association->getFechMode() === FetchMode::EXTRA_LAZY) {
+      if ($this->collection->contains($element)) {
+        return $this->collection->removeElement($element);
+      }
+      
+      $persister = $this->em->getUnitOfWork()->getCollectionPersister($this->association);
+      
+      return $persister->removeElement($element);
+      }
+      
+      $remove = parent::removeElement($element);
+      
+      if (! $removed) {
+        return $remove;
+      }
+      
+      $this->changed();
+      
+      if ($this->association !== null &&
+          $this->association instanceof ToManyAssociationMetadata &&
+          $this->owner &&
+          $this->association->isOrphanRemoval()) {
+          $this->em->getUnitOfWork()->scheduleOrphanRemoval($element);
+        }
+        
+        return $removed;
+    }
+    
+    protected function doInitalize()
+    {}
+    
+    private function restoreNewObjectInDirtyCollection(array $newobjects) : void
+    {
+      $loadedObjects = $this->collection->toArray();
+      $newObjectsByOid = array_combine(array_map('spl_object_id', $newObjects), $newObjects);
+      $loadedObjectsByOid = array_combine(array_map('spl_object_id', $loadedObjects), $loadedObjects);
+      $newObjectsThatWereNotLoaded = array_diff_key($newObjectsByOid, $loadedObjectsByOid);
+      
+      if ($newObjectsThatWereNotLoaded) {
+        array_walk($newObjectsThatWereNotLoaded, [$this->collection, 'add']);
+        
+        $this->isDirty = true;
+      }
+    }
+}
+
+>
 ```
 
 
