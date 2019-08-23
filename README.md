@@ -79,7 +79,21 @@ final class PersistentCollection extends AbstractLazyCollection implements Selec
     }
     
     protected function doInitalize()
-    {}
+    {
+      $newlyAddedDirtyObjects = [];
+      
+      if ($this->isDirty) {
+        $newlyAddedDirtyObjects = $this->collection->toArray();
+      }
+      
+      $this->collection->clear();
+      $this->em->getUnitOfWork()->loadCollection($this);
+      $this->takeSnapshot();
+      
+      if ($newlyAddedDirtyObjects) {
+        $this->restoreNewObjectsInDirtyCollection($newlyAddedDirtyObjects);
+      }
+    }
     
     private function restoreNewObjectInDirtyCollection(array $newobjects) : void
     {
